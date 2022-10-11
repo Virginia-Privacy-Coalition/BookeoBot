@@ -11,19 +11,19 @@ data class Event @JvmOverloads constructor(
     @param:Element(name = "title")
     val title: String? = null,
 
-    @field:Element(name = "link")
-    @param:Element(name = "link")
+    @field:Element(name = "link", required = false)
+    @param:Element(name = "link", required = false)
     var link: String? = null,
 
-    @field:Element(name = "description")
-    @param:Element(name = "description")
+    @field:Element(name = "description", required = false)
+    @param:Element(name = "description", required = false)
     private val description: String? = null,
 
-    @field:Element(name = "pubDate")
-    @param:Element(name = "pubDate")
+    @field:Element(name = "pubDate", required = false)
+    @param:Element(name = "pubDate", required = false)
     private val pubDate: String? = null
 ) {
-    val date = pubDate?.fromHttpToGmtDate() ?: GMTDate.START
+    val publishedDate = pubDate?.fromHttpToGmtDate() ?: GMTDate.START
 
     val textDescription = description?.replace("<br/>", "\n")?.replace(Regex("\\<[^>]*>"), "") ?: ""
 

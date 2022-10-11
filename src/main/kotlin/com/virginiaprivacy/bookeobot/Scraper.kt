@@ -28,8 +28,7 @@ class Scraper {
 
     private val feedScope = CoroutineScope(Executors.newFixedThreadPool(1).asCoroutineDispatcher())
 
-
-    suspend fun getFeed() = flow {
+    private val feedFeed = flow {
         var consecutiveErrors = 0
         while (currentCoroutineContext().isActive) {
             try {
@@ -38,8 +37,8 @@ class Scraper {
                     .bodyAsText(Charset.forName("UTF-16"))
                     .trim()
                     .replaceFirst("^([\\W]+)<", "<")
-                consecutiveErrors = 0
                 emit(serializer.read(Feed::class.java, text))
+                consecutiveErrors = 0
             } catch (e: Throwable) {
                 consecutiveErrors++
                 log.error("Failed to connect to RSS feed. Waiting several minutes then trying again. . .")
@@ -48,6 +47,8 @@ class Scraper {
             delay(2.0.minutes)
         }
     }
+
+    val feed = feedFeed
         .shareIn(feedScope, SharingStarted.Eagerly)
 
     companion object {
@@ -59,28 +60,6 @@ class Scraper {
 fun getSystemValue(key: String) =
     (System.getProperty(key) ?: System.getenv(key))
         ?: throw RuntimeException("Property $key is not set! Add it as a commandline option via -D$key=value or add it as an environmental variable.")
-
-
-fun main() {
-    val scraper = Scraper()
-    val webApiScope = CoroutineScope(Executors.newFixedThreadPool(1).asCoroutineDispatcher())
-
-    runBlocking {
-        webApiScope.launch {
-            val app = Javalin.create().start(8082)
-            app.post("inbound") { ctx ->
-                val event = MessageEvent.fromJson(ctx.body())
-                if (event.text.contains("subscribe", true)) {
-                    Persistence.addNumber(event.msisdn)
-                } else if (event.text.contains("unsubscribe", true)) {
-                    Persistence.deleteNumber(event.msisdn)
-                }
-                log.info("New text received from ${event.msisdn} [${event.messageTimestamp}]: ${event.text}")
-            }
-
-        }
-    }
-}
 
 val dollarFormatter = DecimalFormat("###,###,##0.00")
 val log: Logger = LoggerFactory.getLogger(Scraper::class.java)
