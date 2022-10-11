@@ -1,16 +1,19 @@
 package com.virginiaprivacy.bookeobot
 
 import com.vonage.client.VonageClient
+import com.vonage.client.incoming.MessageEvent
 import com.vonage.client.sms.MessageStatus
 import com.vonage.client.sms.SmsSubmissionResponse
 import com.vonage.client.sms.messages.TextMessage
+import io.javalin.http.Context
 
-class VonageClient(defaultOriginNumber: String) : SMSClient(defaultOriginNumber) {
+class VonageClient(defaultOriginNumber: String, bookeoBot: BookeoBot) : SMSClient(defaultOriginNumber, bookeoBot) {
     private val apiKey = getSystemValue("VONAGE_API_KEY")
     private val apiSecret = getSystemValue("VONAGE_API_SECRET")
 
     private val client: VonageClient = VonageClient.builder().apiKey(apiKey).apiSecret(apiSecret).build()
     private val smsClient = client.smsClient
+    private val persistence = bookeoBot.persistence
 
     private fun getMessage(destination: String, body: String, originNumber: String): TextMessage =
         TextMessage(originNumber, destination, body)
@@ -19,9 +22,10 @@ class VonageClient(defaultOriginNumber: String) : SMSClient(defaultOriginNumber)
         return smsClient.submitMessage(this)
             .also {
                 for (messageIndex in 0.until(it.messageCount)) {
-                    Persistence.usageEstimate += (it.messages[messageIndex].messagePrice).toDouble()
+                    println(it.messages[messageIndex])
+                    persistence.usageEstimate += (it.messages[messageIndex].messagePrice).toDouble()
                 }
-                log.info("Total cost estimate: ${dollarFormatter.format(Persistence.usageEstimate)}")
+                log.info("Total cost estimate: ${dollarFormatter.format(persistence.usageEstimate)}")
             }
     }
 
@@ -38,7 +42,7 @@ class VonageClient(defaultOriginNumber: String) : SMSClient(defaultOriginNumber)
     }
 
     private fun sendEventMessage(event: Event, originNumber: String = defaultOriginNumber) {
-        Persistence.numbers().forEach { number ->
+        persistence.numbers().forEach { number ->
             getMessage(number, event.title + "\n" + event.textDescription, originNumber)
                 .submit()
                 .run {
@@ -49,7 +53,7 @@ class VonageClient(defaultOriginNumber: String) : SMSClient(defaultOriginNumber)
                                 if (it.status != MessageStatus.OK) {
                                     log.warn("Problem sending SMS message [${it.status.name}]: $it")
                                 }
-                                Persistence.usageEstimate += it.messagePrice.toDouble()
+                                persistence.usageEstimate += it.messagePrice.toDouble()
                             }
                     }
                 }
