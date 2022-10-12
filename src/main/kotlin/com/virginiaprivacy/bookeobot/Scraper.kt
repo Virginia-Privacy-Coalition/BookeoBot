@@ -1,27 +1,19 @@
 package com.virginiaprivacy.bookeobot
 
-import com.vonage.client.VonageClient
-import com.vonage.client.incoming.MessageEvent
-import com.vonage.client.sms.SmsSubmissionResponse
-import com.vonage.client.sms.messages.TextMessage
-import io.javalin.Javalin
 import io.ktor.client.*
 import io.ktor.client.engine.cio.*
 import io.ktor.client.request.*
 import io.ktor.client.statement.*
-import io.ktor.http.*
-import io.ktor.util.date.*
 import kotlinx.coroutines.*
-import kotlinx.coroutines.flow.*
+import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.flow
+import kotlinx.coroutines.flow.shareIn
 import org.simpleframework.xml.core.Persister
-import org.slf4j.Logger
-import org.slf4j.LoggerFactory
 import java.nio.charset.Charset
-import java.text.DecimalFormat
 import java.util.concurrent.Executors
 import kotlin.time.Duration.Companion.minutes
 
-class Scraper {
+class Scraper(val rssUrl: String = getSystemValue("rssUrl")) {
     private val client = HttpClient(CIO)
 
     private val serializer = Persister()
@@ -51,15 +43,5 @@ class Scraper {
     val feed = feedFeed
         .shareIn(feedScope, SharingStarted.Eagerly)
 
-    companion object {
-        val rssUrl = getSystemValue("rssUrl")
-
-    }
 }
 
-fun getSystemValue(key: String) =
-    (System.getProperty(key) ?: System.getenv(key))
-        ?: throw RuntimeException("Property $key is not set! Add it as a commandline option via -D$key=value or add it as an environmental variable.")
-
-val dollarFormatter = DecimalFormat("###,###,##0.00")
-val log: Logger = LoggerFactory.getLogger(Scraper::class.java)

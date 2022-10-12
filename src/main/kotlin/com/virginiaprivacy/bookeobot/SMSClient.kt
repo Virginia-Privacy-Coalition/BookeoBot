@@ -1,14 +1,13 @@
 package com.virginiaprivacy.bookeobot
 
-import io.javalin.http.Context
 
+abstract class SMSClient(val defaultOriginNumber: String) {
 
-abstract class SMSClient(val defaultOriginNumber: String, val bookeoBot: BookeoBot) {
-
-    abstract fun sendMessage(destinationNumber: String, body: String)
-    abstract fun sendMessage(destinationNumber: String, originNumber: String, body: String)
-    abstract fun sendMessageToAllNumbers(event: Event)
-    abstract fun sendMessageToAllNumbers(event: Event, originNumber: String = defaultOriginNumber)
+    abstract fun sendMessage(destinationNumber: String, persistence: BookeoBot.Persistence, body: String)
+    abstract fun sendMessage(destinationNumber: String, persistence: BookeoBot.Persistence, originNumber: String, body: String)
+    abstract fun sendMessageToAllNumbers(event: Event, persistence: BookeoBot.Persistence)
+    abstract fun sendMessageToAllNumbers(event: Event, persistence: BookeoBot.Persistence, originNumber: String = defaultOriginNumber)
+    abstract fun sendMessageToAllNumbers(persistence: BookeoBot.Persistence, body: String)
 
 }
 
