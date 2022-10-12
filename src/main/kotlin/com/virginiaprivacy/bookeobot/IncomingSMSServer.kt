@@ -4,9 +4,9 @@ import com.vonage.client.incoming.MessageEvent
 import io.javalin.Javalin
 import io.javalin.apibuilder.ApiBuilder.post
 import io.ktor.http.*
-import kotlinx.coroutines.*
-import java.net.InetAddress
-import java.net.NetworkInterface
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.asCoroutineDispatcher
+import kotlinx.coroutines.withContext
 import java.util.concurrent.Executors
 
 class IncomingSMSServer(private val bookeoBot: BookeoBot) {
@@ -27,7 +27,7 @@ class IncomingSMSServer(private val bookeoBot: BookeoBot) {
                     if (event.msisdn.lowercase().contains(bookeoBot.developerNumber.replace("+", ""))) {
                         when (event.text.escapeIfNeeded().trim().lowercase()) {
                             "bal" -> {
-                                bookeoBot.smsClient.sendMessage(bookeoBot.developerNumber, "Cost this session: ${
+                                bookeoBot.sendDeveloperMessage("Cost this session: ${
                                     dollarFormatter.format(bookeoBot.persistence.usageEstimate)}")
                             }
                         }
