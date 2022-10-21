@@ -8,10 +8,6 @@ import kotlinx.cli.default
 import kotlinx.cli.required
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.runBlocking
-import kotlinx.serialization.decodeFromString
-import kotlinx.serialization.encodeToString
-import kotlinx.serialization.json.Json
-import java.io.File
 import java.time.Instant
 import java.util.*
 import kotlin.concurrent.thread
@@ -19,14 +15,13 @@ import kotlin.concurrent.thread
 
 class BookeoBot(
     val developerNumber: String = "",
-    val smsClient: SMSClient,
-    val rssUrl: String,
+    private val smsClient: SMSClient,
+    private val rssUrl: String,
     private val sendShutdownText: Boolean = false,
     private val skipMissedEvents: Boolean = false
 ) {
 
-    private val startTime = Date.from(
-        Instant.ofEpochMilli(System.currentTimeMillis()))
+    @Volatile private var latestEventPublishTime = Date.from(Instant.ofEpochMilli(System.currentTimeMillis()))
 
     private val scraper = Scraper(rssUrl)
 
@@ -75,63 +70,22 @@ class BookeoBot(
                     val events = feed.eventsList ?: emptyList()
                     for (it in events) {
                         if (skipMissedEvents) {
-                            if (it.publishedDate.toJvmDate().before(startTime)) {
+                            if (it.publishedDate.toJvmDate().before(latestEventPublishTime)) {
                                 log.debug("Skipping over event: ${it.title} that was published on ${it.publishedDate.toHttpDate()}.")
-                                continue
+                            } else {
+                                try {
+                                    smsClient.sendMessageToAllNumbers(it, persistence)
+                                } catch (e: Throwable) {
+                                    log.error("Error sending messages to all numbers.")
+                                    e.printStackTrace()
+                                } finally {
+                                    latestEventPublishTime = it.publishedDate.toJvmDate()
+                                }
                             }
-                        }
-                        if (!persistence.eventProcessed(it)) {
-                            smsClient.sendMessageToAllNumbers(it, persistence)
                         }
                     }
                 }
         }
-
-
-
-
-    class Persistence private constructor() {
-
-        private val numbersFile = File(".numbers").apply { if (!exists()) createNewFile() }
-        private val eventsFile = File(".events").apply { if (!exists()) createNewFile() }
-        internal val numbers = (try { Json.decodeFromString<List<String>>(numbersFile.readText()) } catch (e: Exception) { null } ?: emptyList()).toMutableList()
-        private val events = (try { Json.decodeFromString<List<Int>>(eventsFile.readText()) } catch (e: Exception) { null } ?: emptyList()).toMutableList()
-        @Volatile var usageEstimate = 0.00
-
-        fun eventProcessed(event: Event): Boolean {
-            return if (events.contains(event.hashCode())) {
-                true
-            } else {
-                events.add(event.hashCode())
-                saveEvents()
-                false
-            }
-        }
-
-        fun save() {
-            saveEvents()
-            savePhoneNumbers()
-        }
-
-        @Synchronized private fun saveEvents() {
-            eventsFile.writeText(Json.encodeToString(events.toList()))
-        }
-
-        fun numbers() = numbers.toList()
-
-        @Synchronized
-        fun savePhoneNumbers() {
-            numbersFile.writeText(Json.encodeToString(numbers.toList()))
-        }
-
-        companion object {
-            private var _persistence: Persistence? = null
-
-            fun getPersistence(): Persistence = _persistence ?: Persistence().apply { _persistence = this }
-        }
-
-    }
-
 
 
 }

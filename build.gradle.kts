@@ -10,7 +10,7 @@ plugins {
 }
 
 group = "com.virginiaprivacy"
-version = "1.0.5"
+version = "1.1.6"
 
 repositories {
     mavenCentral()
@@ -26,13 +26,13 @@ dependencies {
     implementation("org.slf4j:slf4j-simple:2.0.3")
     implementation("com.vonage:client:7.1.0")
     implementation("com.carrotsearch.thirdparty:simple-xml-safe:2.7.1")
-    implementation("io.javalin:javalin:5.0.1")
+    implementation("io.javalin:javalin:5.1.1")
     implementation("io.ktor:ktor-client-core:2.1.1")
     implementation("io.ktor:ktor-client-cio:2.1.1")
     implementation("io.ktor:ktor-client-content-negotiation:2.1.1")
     implementation("io.ktor:ktor-serialization-kotlinx-xml:2.1.1")
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.6.4")
-    implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.4.0")
+    implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.4.1")
 }
 
 tasks.shadowJar {

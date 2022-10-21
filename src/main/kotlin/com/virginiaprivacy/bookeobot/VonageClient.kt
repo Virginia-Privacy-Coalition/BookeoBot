@@ -16,30 +16,33 @@ class VonageClient(defaultOriginNumber: String,
     private fun getMessage(destination: String, body: String, originNumber: String): TextMessage =
         TextMessage(originNumber, destination, body)
 
-    private fun TextMessage.submit(persistence: BookeoBot.Persistence): SmsSubmissionResponse {
+    private fun TextMessage.submit(persistence: Persistence): SmsSubmissionResponse {
         return smsClient.submitMessage(this)
             .also {
                 for (messageIndex in 0.until(it.messageCount)) {
                     println(it.messages[messageIndex])
-                    persistence.usageEstimate += (it.messages[messageIndex].messagePrice).toDouble()
-                }
-                log.info("Total cost estimate: ${dollarFormatter.format(persistence.usageEstimate)}")
+                    persistence
+                        .usageEstimate
+                        .getAndUpdate { est ->
+                            est + (it.messages[messageIndex].messagePrice * 100.0.toBigDecimal()).toInt()
+                        }                }
+                log.info("Total cost estimate: ${dollarFormatter.format(persistence.usageEstimate.get() / 100)}")
             }
     }
 
-    override fun sendMessage(destinationNumber: String, persistence: BookeoBot.Persistence, body: String) {
+    override fun sendMessage(destinationNumber: String, persistence: Persistence, body: String) {
         getMessage(destinationNumber, body, defaultOriginNumber).submit(persistence)
     }
 
-    override fun sendMessage(destinationNumber: String, persistence: BookeoBot.Persistence, originNumber: String, body: String) {
+    override fun sendMessage(destinationNumber: String, persistence: Persistence, originNumber: String, body: String) {
         getMessage(destinationNumber, body, originNumber).submit(persistence)
     }
 
-    override fun sendMessageToAllNumbers(event: Event, persistence: BookeoBot.Persistence) {
+    override fun sendMessageToAllNumbers(event: Event, persistence: Persistence) {
         sendEventMessage(event, persistence = persistence)
     }
 
-    private fun sendEventMessage(event: Event, persistence: BookeoBot.Persistence, originNumber: String = defaultOriginNumber) {
+    private fun sendEventMessage(event: Event, persistence: Persistence, originNumber: String = defaultOriginNumber) {
         persistence.numbers().forEach { number ->
             getMessage(number, event.title + "\n" + event.textDescription, originNumber)
                 .submit(persistence)
@@ -47,11 +50,11 @@ class VonageClient(defaultOriginNumber: String,
         }
     }
 
-    override fun sendMessageToAllNumbers(event: Event, persistence: BookeoBot.Persistence, originNumber: String) {
+    override fun sendMessageToAllNumbers(event: Event, persistence: Persistence, originNumber: String) {
         sendEventMessage(event, persistence, originNumber)
     }
 
-    override fun sendMessageToAllNumbers(persistence: BookeoBot.Persistence, body: String) {
+    override fun sendMessageToAllNumbers(persistence: Persistence, body: String) {
         persistence.numbers().forEach { number ->
             getMessage(number, body, defaultOriginNumber)
                 .submit(persistence)
@@ -63,7 +66,11 @@ class VonageClient(defaultOriginNumber: String,
                                 if (it.status != MessageStatus.OK) {
                                     log.warn("Problem sending SMS message [${it.status.name}]: $it")
                                 }
-                                persistence.usageEstimate += it.messagePrice.toDouble()
+                                persistence
+                                    .usageEstimate
+                                    .getAndUpdate { est ->
+                                    est + (it.messagePrice * 100.0.toBigDecimal()).toInt()
+                                }
                             }
                     }
                 }
